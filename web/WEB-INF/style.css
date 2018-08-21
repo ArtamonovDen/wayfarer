@@ -1,0 +1,129 @@
+
+/*Bar*/
+
+.main-bar{
+    float: right;
+    width: 10%;
+
+}
+.main-table{
+    float: left;
+    width: 90%;
+}
+
+/*Table tasks*/
+#tasks {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+#tasks td, #tasks th {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+#tasks tr:nth-child(even){background-color: #f2f2f2;}
+
+#tasks tr:hover {background-color: #ddd;}
+
+#tasks th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #4CAF50;
+    color: white;
+}
+/*----------------------------------------------------*/
+
+
+/*FORMS*/
+/** {
+    box-sizing: border-box;
+}*/
+.main:after{
+    content:"";
+    display: table;
+    clear: both;
+}
+
+.add-main {
+    border-radius: 5px;
+    background-color: #f2f2f2;
+    padding: 20px;
+}
+.add-col-25 {
+    float: left;
+    width: 25%;
+    margin-top: 6px;
+}
+
+.add-col-75 {
+    float: left;
+    width: 75%;
+    margin-top: 6px;
+}
+input[type=text], select, textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+label {
+    padding: 12px 12px 12px 0;
+    display: inline-block;
+}
+
+input[type=submit] {
+    background-color: #4CAF50;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    float: right;
+}
+
+input[type=submit]:hover {
+    background-color: #45a049;
+}
+
+@media screen and (max-width: 600px) {
+    .col-25, .col-75, input[type=submit] {
+        width: 100%;
+        margin-top: 0;
+    }
+}
+
+/* Clear floats after the columns */
+.add-row:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+/*----------------------------------------------------*/
+
+
+
+
+
+/*Button*/
+button {
+    background-color: #4CAF50; /* Green */
+    border: none;
+    color: white;
+    padding: 10px 24px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    cursor: pointer;
+    margin-left:10px;
+    margin-bottom: 10px;
+
+}
+.button:hover{background-color: #3e8e41}
+
+/*----------------------------------------------------*/
