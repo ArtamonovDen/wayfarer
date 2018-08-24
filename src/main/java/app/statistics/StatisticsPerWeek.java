@@ -26,7 +26,6 @@ public class StatisticsPerWeek implements Serializable {
     public BigInteger getTotalOutcome() {
         return resolved;
     }
-    //TODO add move | two kinds of move
 
     @Override
     public String toString() {
