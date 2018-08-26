@@ -2,19 +2,18 @@ package app.model;
 
 import app.dao.DBmanager;
 import app.entity.*;
+import app.statistics.ExtendedWeekStatistics;
+import app.statistics.StatisticsPerWeek;
 
 import javax.persistence.PersistenceException;
-import java.util.Calendar;
-import java.util.Comparator;
-import java.util.Hashtable;
-import java.util.List;
+import java.util.*;
 
 public class Model {
 
     private static Model instance = new Model();
     public DBmanager dbManager = null;
     public boolean updatedTaskTable;
-
+    public boolean updatedStatistics;
 
 
     private List<Task> tasksList;
@@ -40,21 +39,13 @@ public class Model {
     private void createAssigneeMap(){
         List<PizzaGuy> assignees = dbManager.obtainAllFromTable(PizzaGuy.class);
         this.assigneeMap = new Hashtable<>();
-        System.out.println("Assignee Map:");
         if(assignees == null){
             System.out.println("NULL MAP");
         }
-        assignees.forEach((a)-> System.out.println("A"+a.getDepart_id()+" "+a.getPizzaguy_id()));
+
         for(PizzaGuy pg : assignees){
             this.assigneeMap.put(pg.getDepart_id(), pg.getPizzaguy_id());
         }
-        System.out.println("MAP");
-        System.out.println(assigneeMap);
-
-
-
-
-
     }
 
     public int getAssignee(int departId){
@@ -67,15 +58,50 @@ public class Model {
 
     }
 
-//    public List<Task> getTasksList(){
-//        if((tasksList==null) || (!updatedTaskTable)){
-//            tasksList = dbManager.obtainAllFromTable(Task.class);
-//            updatedTaskTable = true;
-//        }
-//        return tasksList;
-//    }
+
+    public void updateAssigneeStatistics(int id, Status status){
+        AssigneeStatistics as;
+        as = dbManager.getById(AssigneeStatistics.class, id);
+        if(as==null){
+            as = new AssigneeStatistics();
+            as.setId(id);
+            as.inc(status);
+            dbManager.insertEntity(as);
+        }
+        else{
+            as.inc(status);
+            dbManager.updateEntity(as);
+        }
+
+
+    }
+
+
+    public void updateStatistics(Calendar cal,Status status){
+        //TODO update statistics
+
+        //Update statistics in the DB
+        WeekStatistics ws;
+
+        ws = dbManager.getById(WeekStatistics.class,
+                new WeekStatisticsKey (cal.get(Calendar.YEAR), cal.get(Calendar.WEEK_OF_YEAR)) );
+
+        if(ws==null){
+            ws = new WeekStatistics();
+            ws.setKey(new WeekStatisticsKey (cal.get(Calendar.YEAR), cal.get(Calendar.WEEK_OF_YEAR)) );
+            ws.inc(status);
+            dbManager.insertEntity(ws);
+        }
+        else{
+            ws.inc(status);
+            dbManager.updateEntity(ws);
+        }
+        updatedStatistics = false;
+
+    }
 
     public void addTask(Task task){
+
         dbManager.insertEntity(task);
     }
 
@@ -97,12 +123,17 @@ public class Model {
         System.out.println("Hi");
 
     }
-    public List<ExtendedTask> getExtendedTasksList(){
+
+    private void updateTaskList(){
         if((tasksList==null) || (!updatedTaskTable)){
             extendedTasksList = dbManager.obtainAllFromTable(ExtendedTask.class);
             extendedTasksList.sort(Comparator.comparing(ExtendedTask::getCreatedate));
             updatedTaskTable = true;
         }
+    }
+
+    public List<ExtendedTask> getExtendedTasksList(){
+        updateTaskList();
         return extendedTasksList;
     }
 
@@ -110,8 +141,6 @@ public class Model {
     public void removeTask(int id){
         dbManager.removeEntity(Task.class, id);
     }
-
-
 
     private boolean validateStatus(Status oldStatus, Status newStatus){
         switch (oldStatus){
@@ -167,43 +196,166 @@ public class Model {
             case Move: switch (newStatus){
                 default: return false;
             }
+            case Move_income:switch (newStatus){
+                case Open: return true;
+                default: return false;
+            }
 
         }
         return false;
     }
 
     public void changeStatus(int id, Status status){
-//        Task updTask;
-//        for(Task task: tasksList){
-//            if(task.getId()==id){
-//                updTask = task;
-//                updTask.setStatus(status);
-//                dbManager.updateEntity(updTask);
-//                return;
-//            }
-//        }
         Task updTask;
+        updateTaskList();
+
         for(ExtendedTask task: extendedTasksList){
             if(task.getId()==id){
                 updTask = task.getSimpleTask();
                 if(!validateStatus(updTask.getStatus(), status )){
-                    break;
+                    throw  new IllegalArgumentException("Wrong status");
                 }
+                Status oldStatus = updTask.getStatus();
                 updTask.setStatus(status);
                 dbManager.updateEntity(updTask);
+                if(validateStatusUpdate(oldStatus,status))
+                    updateAssigneeStatistics(updTask.getAssignee(), status);
                 return;
             }
         }
-        throw new IllegalArgumentException("Wrong ID value or status value");
+        throw  new IllegalArgumentException("Wrong ID");
 
     }
 
+    private boolean validateStatusUpdate(Status oldStatus, Status status) {
+
+        switch (status){
+            case Open:
+                switch (oldStatus){
+                    case Move_income:return false;
+                    default:return true;
+                }
+                default:return true;
+        }
+    }
+
+    public ArrayList<Status> getAvailableStatus(int  id) {
+        updateTaskList();
+
+        Status status = null;
+        ArrayList<Status> avStatus = new ArrayList<>();
+
+        for (ExtendedTask task : extendedTasksList) {
+            if (task.getId() == id) {
+                status = task.getStatus();
+                break;
+            }
+        }
+
+        switch (status) {
+            case Open:
+                avStatus.addAll(Arrays.asList(Status.Move, Status.Accepted, Status.AIR));
+                return avStatus;
+            case Accepted:
+                avStatus.addAll(Arrays.asList(Status.Move, Status.Assessment));
+                return avStatus;
+            case AIR:
+                avStatus.addAll(Arrays.asList(Status.In_progress));
+                return avStatus;
+            case Resolved:
+                avStatus.addAll(Arrays.asList(Status.Rejected, Status.Closed));
+                return avStatus;
+            case In_progress:
+                avStatus.addAll(Arrays.asList(Status.Move, Status.AIR, Status.Resolved, Status.Technical_review));
+                return avStatus;
+            case Technical_review:
+                avStatus.addAll(Arrays.asList(Status.In_progress));
+                return avStatus;
+            case Rejected:
+                avStatus.addAll(Arrays.asList(Status.In_progress));
+                return avStatus;
+            case Closed:
+                avStatus.addAll(Arrays.asList(Status.Reopen));
+                return avStatus;
+            case Reopen:
+                avStatus.addAll(Arrays.asList(Status.Closed));
+                return avStatus;
+            case Assessment:
+                avStatus.addAll(Arrays.asList(Status.In_progress,Status.AIR,Status.Move));
+                return avStatus;
+            case Move_income:
+                avStatus.addAll(Arrays.asList(Status.Open));
+                return avStatus;
+            case Move:
+                return avStatus;
+            default:
+                return avStatus;
+        }
 
 
+
+    }
+
+    public ArrayList<ExtendedWeekStatistics> getStatistics(){
+
+        List<WeekStatistics> wsList = dbManager.obtainAllFromTable(WeekStatistics.class);
+        wsList.sort(WeekStatistics::compareTo);
+        ArrayList<ExtendedWeekStatistics> ewsList = dbManager.getExtendedStatistics(wsList);
+        return ewsList;
+    }
+
+    public ArrayList<AssigneeStatistics> getAssigneeStatistics(){
+
+        List<AssigneeStatistics> asList = dbManager.obtainAllFromTable(AssigneeStatistics.class);
+
+        asList.sort(AssigneeStatistics::compareTo);
+        ArrayList<AssigneeStatistics> assList =new ArrayList<>();
+        assList.addAll(asList);
+        return assList;
+    }
+    public List<ExtendedAssigneeStatistics> getExtendedAssigneeStatistics(){
+
+        List<ExtendedAssigneeStatistics> asList = dbManager.obtainAllFromTable(ExtendedAssigneeStatistics.class);
+
+        asList.sort(ExtendedAssigneeStatistics::compareTo);
+
+        return asList;
+    }
+
+
+    /**Returns ArrayList of available staff to be an assignee of the task.
+     *Check the depart_id of the task and then return all staff from this department
+     *Throws IllegalArgumentException if no task with given id found
+     **/
+    public ArrayList<supEngineer> getAvailableAssignees(int id){
+
+        updateTaskList();
+        int depart;
+        ArrayList<supEngineer> avAssignee = new ArrayList<>();
+
+        for (ExtendedTask task : extendedTasksList) {
+            if (task.getId() == id) {
+                depart = task.getDepart_id();
+
+                for(supEngineer se: dbManager.obtainAllFromTable(supEngineer.class)){
+                    if(se.getDepart_id() == depart){
+                        avAssignee.add(se);
+                    }
+                }
+                return avAssignee;
+
+            }
+        }
+        throw  new IllegalArgumentException("Wrong ID");
+    }
+
+
+    /**
+     * Close the data base connection and clean up resources
+     */
     public void clearResources(){
         dbManager.close();
     }
 }
-//TODO разные move
+
 //TODO close DB connection
-//TODO сдедать выпадающие исключения

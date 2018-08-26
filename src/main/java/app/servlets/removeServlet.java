@@ -21,20 +21,25 @@ public class removeServlet extends HttpServlet {
         public void doPost(HttpServletRequest req, HttpServletResponse resp)
                 throws ServletException, IOException {
             Model prototype = Model.getInstance();
+            req.setAttribute("active",1);
 
             try{
                 prototype.removeTask(
                         Integer.parseInt(req.getParameter("id"))
                 );
-            }catch (Exception e){
-                System.out.println("Error in removing: "+e.getMessage());
-                req.setAttribute("error",1);
+
+            }
+            catch (Exception e){
+                System.out.println("Error: Bad ID");
+                req.setAttribute("error","Wrong ID");
+                doGet(req, resp);
+                return;
             }
 
             req.setAttribute("error",null);
-            req.setAttribute("active",1);
             prototype.updatedTaskTable = false;
             doGet(req, resp);
+            return;
 
         }
 }
