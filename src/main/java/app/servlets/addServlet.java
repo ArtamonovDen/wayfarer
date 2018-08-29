@@ -32,8 +32,6 @@ public class addServlet extends HttpServlet {
         req.setAttribute("active",1 );
 
         try {
-            //TODO check depart_id
-            //TODO check customer id
             comingTask.setName(
                     req.getParameter("name")
             );
@@ -65,13 +63,21 @@ public class addServlet extends HttpServlet {
 
         }catch (Exception e){
             System.out.println("Error in adding");
+
             req.setAttribute("task",null );
             doGet(req, resp);
+
             return;
 
         }
 
         prototype.updatedTaskTable = false;
+        //Update Statistics
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(comingTask.getCreatedate());
+        prototype.updateStatistics(cal, comingTask.getStatus());
+        prototype.updateAssigneeStatistics(comingTask.getAssignee(), comingTask.getStatus());
+
         req.setAttribute("task",comingTask.getName()  );
 
         req.setAttribute("active",1 );
@@ -80,7 +86,6 @@ public class addServlet extends HttpServlet {
     }
 
 
-    //TODO css styles
-    //TODO check status
+
 
     }
